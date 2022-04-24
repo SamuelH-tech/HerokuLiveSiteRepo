@@ -1,40 +1,88 @@
-import http from 'http'; // import pre-bundled module(s)
-import fs from 'fs';
-import mime from 'mime-types'; // third-party module
-let lookup = mime.lookup; // alias for mime.lookup
-// look for enviroment variable in the server called PORT or use 3000
-const port = process.env.PORT || 3000;
+#!/usr/bin/env node
 
-// Create an Instance of a Server (Immutable) cannot be modified
-const server = http.createServer(function(req, res)
-{
-    //declare the path as a string from the request
-    let path = req.url as string;
+/**
+ * Module dependencies.
+ */
 
-    if(path == "/" || path == "/home")
-    {
-        path = "/index.html";
-    }
+import app from "./Server/Config/app";
+import debug from "debug";
+debug("temp:server");
+import http from "http";
+import { HttpError } from "http-errors";
 
-    let mime_type = lookup(path.substring(1)) as string;
+/**
+ * Get port from environment and store in Express.
+ */
 
-    fs.readFile(__dirname  + path, function(err, data)
-    {
-        if (err) 
-        {
-            res.writeHead(404);
-            //end meaning the end of the write (no more data can be written after it)
-            res.end("ERROR: 404 - File Not Found! " + err.message);
-            return;
-          }
-          res.setHeader("X-Content-Type-Options", "nosniff"); // security guard
-          res.writeHead(200, {'Content-Type': mime_type});
-          res.end(data);
-      
-    });
-});
+const port = normalizePort(process.env.PORT || "3000") as number;
+app.set("port", port);
 
-// like addEventListener("user req on a port")
-server.listen(port, function() {
-  console.log(`Server running at Port:${port}`);
-});
+/**
+ * Create HTTP server.
+ */
+
+const server = http.createServer(app);
+
+/**
+ * Listen on provided port, on all network interfaces.
+ */
+
+server.listen(port);
+server.on("error", onError);
+server.on("listening", onListening);
+
+/**
+ * Normalize a port into a number, string, or false.
+ */
+
+function normalizePort(val: string) {
+  let port = parseInt(val, 10);
+
+  if (isNaN(port)) {
+    // named pipe
+    return val;
+  }
+
+  if (port >= 0) {
+    // port number
+    return port;
+  }
+
+  return false;
+}
+
+/**
+ * Event listener for HTTP server "error" event.
+ */
+
+function onError(error: HttpError): void {
+  if (error.syscall !== "listen") {
+    throw error;
+  }
+
+  let bind = typeof port === "string" ? "Pipe " + port : "Port " + port;
+
+  // handle specific listen errors with friendly messages
+  switch (error.code) {
+    case "EACCES":
+      console.error(bind + " requires elevated privileges");
+      process.exit(1);
+      break;
+    case "EADDRINUSE":
+      console.error(bind + " is already in use");
+      process.exit(1);
+      break;
+    default:
+      throw error;
+  }
+}
+
+/**
+ * Event listener for HTTP server "listening" event.
+ */
+
+function onListening() {
+  let addr = server.address() as string;
+  let bind = "pipe " + addr;
+  debug("Listening on " + bind);
+}
